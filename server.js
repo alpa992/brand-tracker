@@ -28,9 +28,18 @@ db.exec(`
     position INTEGER,
     found INTEGER NOT NULL,
     model TEXT,
+    sources TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 `);
+
+// Add sources column if migrating from an older DB version
+try {
+  const cols = db.prepare("PRAGMA table_info(tracks)").all().map(c => c.name);
+  if (!cols.includes('sources')) {
+    db.exec("ALTER TABLE tracks ADD COLUMN sources TEXT");
+  }
+} catch (e) { /* ignore */ }
 
 // ============ APP ============
 const app = express();
@@ -95,26 +104,40 @@ app.post('/api/track', requireAuth, async (req, res) => {
   try {
     const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-    const completion = await openai.chat.completions.create({
+    // Build request. Web-search-enabled models (names containing "search") always
+    // browse the web and do NOT support the temperature parameter.
+    const isSearchModel = /search/i.test(OPENAI_MODEL);
+
+    const requestBody = {
       model: OPENAI_MODEL,
       messages: [
         { role: 'system', content: 'You are a helpful assistant. When asked for a ranked list, respond with a clearly numbered list (1., 2., 3., ...). Keep each item concise with the name first, then a short description.' },
         { role: 'user', content: prompt }
-      ],
-      temperature: 0.3
-    });
+      ]
+    };
+    if (!isSearchModel) {
+      requestBody.temperature = 0.3;
+    }
+
+    const completion = await openai.chat.completions.create(requestBody);
 
     const responseText = completion.choices[0]?.message?.content || '';
+
+    // Capture citation URLs if the model returned annotations (web-search models do)
+    const annotations = completion.choices[0]?.message?.annotations || [];
+    const sources = annotations
+      .filter(a => a.type === 'url_citation' && a.url_citation)
+      .map(a => ({ title: a.url_citation.title, url: a.url_citation.url }));
 
     // --- Find brand position ---
     const { position, found } = findBrandPosition(responseText, brandName);
 
     // --- Save to DB ---
     const stmt = db.prepare(`
-      INSERT INTO tracks (brand_name, prompt, response, position, found, model)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO tracks (brand_name, prompt, response, position, found, model, sources)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    const info = stmt.run(brandName, prompt, responseText, position, found ? 1 : 0, OPENAI_MODEL);
+    const info = stmt.run(brandName, prompt, responseText, position, found ? 1 : 0, OPENAI_MODEL, JSON.stringify(sources));
 
     return res.json({
       id: info.lastInsertRowid,
@@ -124,6 +147,7 @@ app.post('/api/track', requireAuth, async (req, res) => {
       position,
       found,
       model: OPENAI_MODEL,
+      sources,
       createdAt: new Date().toISOString()
     });
   } catch (err) {
@@ -135,12 +159,16 @@ app.post('/api/track', requireAuth, async (req, res) => {
 // --- History endpoint ---
 app.get('/api/history', requireAuth, (req, res) => {
   const rows = db.prepare(`
-    SELECT id, brand_name AS brandName, prompt, response, position, found, model, created_at AS createdAt
+    SELECT id, brand_name AS brandName, prompt, response, position, found, model, sources, created_at AS createdAt
     FROM tracks
     ORDER BY id DESC
     LIMIT 100
   `).all();
-  res.json(rows.map(r => ({ ...r, found: !!r.found })));
+  res.json(rows.map(r => ({
+    ...r,
+    found: !!r.found,
+    sources: r.sources ? JSON.parse(r.sources) : []
+  })));
 });
 
 // --- Delete a record ---
