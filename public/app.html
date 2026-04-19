@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brand Position Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f4efe6;
+    --paper-light: #faf6ec;
+    --ink: #1a1713;
+    --ink-soft: #4a433a;
+    --ink-faint: #8a8170;
+    --rule: #d8cfbf;
+    --rule-light: #e6dfcf;
+    --accent: #c2410c;
+    --accent-dark: #9a3412;
+    --good: #166534;
+    --warn: #92400e;
+    --error: #991b1b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Fraunces', Georgia, serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 90% 0%, rgba(194, 65, 12, 0.05) 0%, transparent 35%),
+      radial-gradient(circle at 0% 100%, rgba(26, 23, 19, 0.04) 0%, transparent 40%);
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.05 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    z-index: 1;
+  }
+
+  /* ========= HEADER ========= */
+  header {
+    position: relative;
+    z-index: 2;
+    border-bottom: 1px solid var(--rule);
+    padding: 22px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(244, 239, 230, 0.85);
+    backdrop-filter: blur(6px);
+  }
+  .logo {
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .logo em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 300;
+  }
+  .logo::before {
+    content: "◆";
+    color: var(--accent);
+    margin-right: 10px;
+    font-size: 10px;
+    vertical-align: middle;
+  }
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .logout {
+    background: none;
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .logout:hover { background: var(--ink); color: var(--paper); }
+
+  /* ========= LAYOUT ========= */
+  main {
+    position: relative;
+    z-index: 2;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 56px 48px 80px;
+  }
+
+  .hero {
+    margin-bottom: 56px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 40px;
+    align-items: end;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 40px;
+  }
+  .hero h1 {
+    font-size: 72px;
+    font-weight: 300;
+    line-height: 0.98;
+    letter-spacing: -0.03em;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 300;
+  }
+  .hero-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-align: right;
+    line-height: 1.8;
+  }
+  .hero-sub strong {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ========= FORM ========= */
+  .card {
+    background: var(--paper-light);
+    border: 1px solid var(--rule);
+    padding: 40px;
+    margin-bottom: 40px;
+  }
+  .card-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .card-label::before {
+    content: "";
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+
+  .field {
+    margin-bottom: 28px;
+  }
+  .field label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+  .field input, .field textarea {
+    width: 100%;
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--ink);
+    padding: 6px 0 10px;
+    color: var(--ink);
+    outline: none;
+    resize: none;
+    transition: border-color 0.2s;
+  }
+  .field textarea {
+    min-height: 72px;
+    font-size: 17px;
+    line-height: 1.5;
+  }
+  .field input:focus, .field textarea:focus {
+    border-bottom-color: var(--accent);
+  }
+  .field input::placeholder, .field textarea::placeholder {
+    color: #b8af9e;
+    font-style: italic;
+  }
+
+  .actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 36px;
+    flex-wrap: wrap;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 16px 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-primary:hover { background: var(--accent); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+    padding: 16px 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { background: var(--ink); color: var(--paper); }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ========= RESULT ========= */
+  .result {
+    margin-top: 32px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule);
+    display: none;
+  }
+  .result.visible { display: block; animation: fade 0.5s both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .verdict {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 32px;
+    align-items: center;
+    padding: 28px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    margin-bottom: 24px;
+  }
+  .verdict-num {
+    font-size: 84px;
+    font-weight: 300;
+    line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+  }
+  .verdict-num.not-found {
+    font-size: 28px;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-soft);
+    letter-spacing: 0;
+  }
+  .verdict-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .verdict-brand {
+    font-size: 24px;
+    margin-top: 4px;
+    font-weight: 400;
+  }
+  .verdict-meta {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    line-height: 1.8;
+  }
+
+  .response-wrap {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 28px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+  .response-wrap.open {
+    max-height: 2000px;
+    overflow-y: auto;
+  }
+  .response-text {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink);
+    white-space: pre-wrap;
+    font-family: 'Fraunces', serif;
+  }
+  .response-text mark {
+    background: var(--accent);
+    color: var(--paper);
+    padding: 1px 4px;
+    font-weight: 500;
+    font-style: normal;
+  }
+
+  /* ========= HISTORY ========= */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .section-head h2 {
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+  }
+  .section-head h2 em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 300;
+  }
+  .section-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  .history-table thead th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 500;
+    text-align: left;
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--ink);
+  }
+  .history-table tbody td {
+    padding: 16px 12px;
+    border-bottom: 1px solid var(--rule-light);
+    vertical-align: top;
+  }
+  .history-table tbody tr:hover { background: rgba(194, 65, 12, 0.03); }
+  .pos-pill {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border: 1px solid var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .pos-pill.top { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+  .pos-pill.missing {
+    background: transparent;
+    color: var(--ink-soft);
+    border-color: var(--rule);
+    font-style: italic;
+    font-family: 'Fraunces', serif;
+  }
+  .cell-prompt {
+    max-width: 360px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .cell-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+  .cell-brand {
+    font-weight: 500;
+  }
+  .row-action {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+  }
+  .row-action:hover { color: var(--error); }
+  .row-view {
+    color: var(--ink-soft);
+  }
+  .row-view:hover { color: var(--accent); }
+
+  .history-empty {
+    padding: 60px 20px;
+    text-align: center;
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 17px;
+  }
+
+  /* ========= TOAST ========= */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 14px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    z-index: 50;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: var(--error); }
+
+  /* ========= MODAL ========= */
+  .modal-back {
+    position: fixed; inset: 0;
+    background: rgba(26, 23, 19, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 40;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-back.show { display: flex; }
+  .modal {
+    background: var(--paper-light);
+    border: 1px solid var(--rule);
+    max-width: 720px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 40px;
+    position: relative;
+  }
+  .modal-close {
+    position: absolute;
+    top: 16px; right: 20px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--ink-soft);
+  }
+  .modal-close:hover { color: var(--accent); }
+  .modal h3 {
+    font-size: 26px;
+    font-weight: 400;
+    margin-bottom: 6px;
+  }
+  .modal .m-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 24px;
+  }
+  .modal .m-prompt {
+    font-style: italic;
+    color: var(--ink-soft);
+    padding: 16px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 24px;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .modal .m-response {
+    font-size: 16px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+  .modal .m-response mark {
+    background: var(--accent);
+    color: var(--paper);
+    padding: 1px 4px;
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  .toggle-link {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 16px;
+    padding: 0;
+  }
+  .toggle-link:hover { text-decoration: underline; }
+
+  /* ========= RESPONSIVE ========= */
+  @media (max-width: 820px) {
+    header { padding: 16px 20px; }
+    main { padding: 32px 20px 60px; }
+    .hero { grid-template-columns: 1fr; gap: 20px; }
+    .hero h1 { font-size: 48px; }
+    .hero-sub { text-align: left; }
+    .card { padding: 24px; }
+    .verdict { grid-template-columns: 1fr; gap: 12px; text-align: left; }
+    .verdict-meta { text-align: left; }
+    .history-table thead { display: none; }
+    .history-table, .history-table tbody, .history-table tr, .history-table td { display: block; width: 100%; }
+    .history-table tr {
+      border: 1px solid var(--rule);
+      margin-bottom: 14px;
+      padding: 14px;
+      background: var(--paper-light);
+    }
+    .history-table td { border: none; padding: 6px 0; }
+    .cell-prompt { max-width: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Brand <em>Tracker</em></div>
+  <div class="header-meta">
+    <span id="statusDot">● Connected</span>
+    <button class="logout" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <h1>Where does your<br/>brand <em>land</em>?</h1>
+    <div class="hero-sub">
+      Query <strong>ChatGPT</strong><br/>
+      Parse the ranking<br/>
+      Record every signal
+    </div>
+  </section>
+
+  <!-- TRACKER FORM -->
+  <section class="card">
+    <div class="card-label">New Inquiry</div>
+
+    <div class="field">
+      <label for="brandName">Brand Name</label>
+      <input id="brandName" type="text" placeholder="e.g. Synthesia" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label for="prompt">Prompt</label>
+      <textarea id="prompt" placeholder="e.g. What are the best 10 platforms for creating AI videos?" rows="3"></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="trackBtn">Track Position</button>
+      <button class="btn-secondary" id="seeResultsBtn" disabled>See Results</button>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result" id="result">
+      <div class="verdict">
+        <div class="verdict-num" id="verdictNum">—</div>
+        <div>
+          <div class="verdict-label">Position for</div>
+          <div class="verdict-brand" id="verdictBrand">—</div>
+        </div>
+        <div class="verdict-meta" id="verdictMeta">
+          <div>Model · —</div>
+          <div>Stored · —</div>
+        </div>
+      </div>
+      <button class="toggle-link" id="toggleResp">▾ Reveal full response</button>
+      <div class="response-wrap" id="respWrap">
+        <div class="response-text" id="responseText"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section>
+    <div class="section-head">
+      <h2>Tracking <em>Log</em></h2>
+      <div class="section-count" id="historyCount">— entries</div>
+    </div>
+    <div id="historyWrap">
+      <div class="history-empty">Loading…</div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- Modal -->
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">×</button>
+    <h3 id="mBrand">—</h3>
+    <div class="m-meta" id="mMeta">—</div>
+    <div class="m-prompt" id="mPrompt">—</div>
+    <div class="m-response" id="mResponse">—</div>
+  </div>
+</div>
+
+<script>
+  const brandNameInput = document.getElementById('brandName');
+  const promptInput = document.getElementById('prompt');
+  const trackBtn = document.getElementById('trackBtn');
+  const seeResultsBtn = document.getElementById('seeResultsBtn');
+  const resultBox = document.getElementById('result');
+  const verdictNum = document.getElementById('verdictNum');
+  const verdictBrand = document.getElementById('verdictBrand');
+  const verdictMeta = document.getElementById('verdictMeta');
+  const responseText = document.getElementById('responseText');
+  const toggleResp = document.getElementById('toggleResp');
+  const respWrap = document.getElementById('respWrap');
+  const historyWrap = document.getElementById('historyWrap');
+  const historyCount = document.getElementById('historyCount');
+  const toast = document.getElementById('toast');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  // Modal
+  const modalBack = document.getElementById('modalBack');
+  const mBrand = document.getElementById('mBrand');
+  const mMeta = document.getElementById('mMeta');
+  const mPrompt = document.getElementById('mPrompt');
+  const mResponse = document.getElementById('mResponse');
+  document.getElementById('modalClose').onclick = () => modalBack.classList.remove('show');
+  modalBack.addEventListener('click', (e) => { if (e.target === modalBack) modalBack.classList.remove('show'); });
+
+  let lastResult = null;
+
+  function showToast(msg, isError = false) {
+    toast.textContent = msg;
+    toast.classList.toggle('error', isError);
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function highlight(text, brand) {
+    if (!brand) return escapeHtml(text);
+    const escaped = escapeHtml(text);
+    const safeBrand = brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escaped.replace(new RegExp(safeBrand, 'gi'), m => `<mark>${m}</mark>`);
+  }
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ======= TRACK =======
+  trackBtn.addEventListener('click', async () => {
+    const brandName = brandNameInput.value.trim();
+    const prompt = promptInput.value.trim();
+    if (!brandName || !prompt) {
+      showToast('Brand and prompt required', true);
+      return;
+    }
+    trackBtn.disabled = true;
+    seeResultsBtn.disabled = true;
+    trackBtn.textContent = 'Querying ChatGPT…';
+    resultBox.classList.remove('visible');
+
+    try {
+      const res = await fetch('/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandName, prompt })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      lastResult = data;
+      seeResultsBtn.disabled = false;
+      showToast('Tracked · Click "See Results"');
+      loadHistory();
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      trackBtn.disabled = false;
+      trackBtn.textContent = 'Track Position';
+    }
+  });
+
+  // ======= SEE RESULTS =======
+  seeResultsBtn.addEventListener('click', () => {
+    if (!lastResult) return;
+    const { brandName, position, found, model, createdAt, response } = lastResult;
+
+    if (found) {
+      verdictNum.textContent = '#' + position;
+      verdictNum.classList.remove('not-found');
+    } else {
+      verdictNum.textContent = 'Not found';
+      verdictNum.classList.add('not-found');
+    }
+    verdictBrand.textContent = brandName;
+    verdictMeta.innerHTML = `<div>Model · ${escapeHtml(model)}</div><div>Stored · ${fmtDate(createdAt)}</div>`;
+    responseText.innerHTML = highlight(response, brandName);
+    respWrap.classList.remove('open');
+    toggleResp.textContent = '▾ Reveal full response';
+    resultBox.classList.add('visible');
+    resultBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  toggleResp.addEventListener('click', () => {
+    const open = respWrap.classList.toggle('open');
+    toggleResp.textContent = open ? '▴ Hide response' : '▾ Reveal full response';
+  });
+
+  // ======= HISTORY =======
+  async function loadHistory() {
+    try {
+      const res = await fetch('/api/history');
+      if (res.status === 401) { window.location.href = '/login'; return; }
+      const rows = await res.json();
+      renderHistory(rows);
+    } catch (err) {
+      historyWrap.innerHTML = `<div class="history-empty">Could not load history.</div>`;
+    }
+  }
+
+  function renderHistory(rows) {
+    historyCount.textContent = `${rows.length} ${rows.length === 1 ? 'entry' : 'entries'}`;
+    if (!rows.length) {
+      historyWrap.innerHTML = `<div class="history-empty">No tracks yet. Your first inquiry will appear here.</div>`;
+      return;
+    }
+    const tbl = document.createElement('table');
+    tbl.className = 'history-table';
+    tbl.innerHTML = `
+      <thead>
+        <tr>
+          <th style="width:70px">Pos</th>
+          <th style="width:180px">Brand</th>
+          <th>Prompt</th>
+          <th style="width:160px">When</th>
+          <th style="width:120px"></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbody = tbl.querySelector('tbody');
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      let posCell;
+      if (!r.found) {
+        posCell = `<span class="pos-pill missing">n/a</span>`;
+      } else if (r.position <= 3) {
+        posCell = `<span class="pos-pill top">#${r.position}</span>`;
+      } else {
+        posCell = `<span class="pos-pill">#${r.position}</span>`;
+      }
+      tr.innerHTML = `
+        <td>${posCell}</td>
+        <td class="cell-brand">${escapeHtml(r.brandName)}</td>
+        <td class="cell-prompt">${escapeHtml(r.prompt)}</td>
+        <td class="cell-date">${fmtDate(r.createdAt)}</td>
+        <td>
+          <button class="row-action row-view" data-view="${r.id}">View</button>
+          <button class="row-action" data-del="${r.id}">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+      tr.querySelector('[data-view]').addEventListener('click', () => openModal(r));
+      tr.querySelector('[data-del]').addEventListener('click', () => deleteRow(r.id));
+    }
+    historyWrap.innerHTML = '';
+    historyWrap.appendChild(tbl);
+  }
+
+  function openModal(r) {
+    mBrand.textContent = r.brandName;
+    const posLabel = r.found ? `Position #${r.position}` : 'Not found';
+    mMeta.textContent = `${posLabel} · ${r.model} · ${fmtDate(r.createdAt)}`;
+    mPrompt.textContent = '" ' + r.prompt + ' "';
+    mResponse.innerHTML = highlight(r.response, r.brandName);
+    modalBack.classList.add('show');
+  }
+
+  async function deleteRow(id) {
+    if (!confirm('Delete this entry?')) return;
+    const res = await fetch('/api/history/' + id, { method: 'DELETE' });
+    if (res.ok) {
+      showToast('Deleted');
+      loadHistory();
+    } else {
+      showToast('Delete failed', true);
+    }
+  }
+
+  logoutBtn.addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    window.location.href = '/login';
+  });
+
+  loadHistory();
+</script>
+</body>
+</html>
